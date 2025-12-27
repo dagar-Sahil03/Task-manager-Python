@@ -2,9 +2,17 @@
 
 {% block title %}Edit Task - Task Tracker{% endblock %}
 
+{% block extra_head %}
+<style>
+    .priority-high { border-left: 4px solid #dc3545; }
+    .priority-medium { border-left: 4px solid #ffc107; }
+    .priority-low { border-left: 4px solid #28a745; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
+    <div class="col-md-10 col-lg-8">
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0">
@@ -38,6 +46,81 @@
                                   placeholder="Enter task description (optional)">{{ task.description or '' }}</textarea>
                         <div class="form-text">Maximum 1000 characters</div>
                     </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="due_date" class="form-label">
+                                <i class="bi bi-calendar"></i> Due Date
+                            </label>
+                            <input type="date" 
+                                   class="form-control" 
+                                   id="due_date" 
+                                   name="due_date"
+                                   value="{{ task.due_date or '' }}">
+                            <div class="form-text">Select a due date for this task</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="priority" class="form-label">
+                                <i class="bi bi-flag"></i> Priority
+                            </label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="low" {% if task.priority == 'low' %}selected{% endif %}>🟢 Low</option>
+                                <option value="medium" {% if task.priority == 'medium' or not task.priority %}selected{% endif %}>🟡 Medium</option>
+                                <option value="high" {% if task.priority == 'high' %}selected{% endif %}>🔴 High</option>
+                            </select>
+                            <div class="form-text">Set task priority level</div>
+                        </div>
+                    </div>
+
+                    <!-- Recurring Task Options -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_recurring" 
+                                       name="is_recurring"
+                                       {% if task.recurring_type %}checked{% endif %}
+                                       onchange="toggleRecurringOptions()">
+                                <label class="form-check-label" for="is_recurring">
+                                    <i class="bi bi-arrow-repeat"></i> Make this a recurring task
+                                </label>
+                            </div>
+                        </div>
+                        <div class="card-body" id="recurringOptions" style="display: {% if task.recurring_type %}block{% else %}none{% endif %};">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label for="recurring_type" class="form-label">Repeat</label>
+                                    <select class="form-select" id="recurring_type" name="recurring_type">
+                                        <option value="">Select...</option>
+                                        <option value="daily" {% if task.recurring_type == 'daily' %}selected{% endif %}>Daily</option>
+                                        <option value="weekly" {% if task.recurring_type == 'weekly' %}selected{% endif %}>Weekly</option>
+                                        <option value="monthly" {% if task.recurring_type == 'monthly' %}selected{% endif %}>Monthly</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="recurring_time" class="form-label">Time (Optional)</label>
+                                    <input type="time" 
+                                           class="form-control" 
+                                           id="recurring_time" 
+                                           name="recurring_time"
+                                           value="{{ task.recurring_time or '' }}"
+                                           placeholder="HH:MM">
+                                    <div class="form-text">e.g., 7:00 AM for daily class</div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="recurring_end_date" class="form-label">End Date (Optional)</label>
+                                    <input type="date" 
+                                           class="form-control" 
+                                           id="recurring_end_date" 
+                                           name="recurring_end_date"
+                                           value="{{ task.recurring_end_date or '' }}">
+                                    <div class="form-text">When to stop recurring</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="mb-3">
                         <label class="form-label">Current Status</label>
@@ -53,6 +136,28 @@
                         <div class="form-text">Use the toggle button on the homepage to change status</div>
                     </div>
                     
+                    {% if current_user and task.user_id == current_user.id %}
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_shared" 
+                                       name="is_shared"
+                                       {% if task.is_shared %}checked{% endif %}>
+                                <label class="form-check-label" for="is_shared">
+                                    <i class="bi bi-share"></i> Share this task with other users
+                                </label>
+                            </div>
+                            <div class="form-text">When shared, other users can view this task</div>
+                        </div>
+                    {% else %}
+                        <div class="mb-3">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> This is a shared task. Only the owner can change sharing settings.
+                            </div>
+                        </div>
+                    {% endif %}
+                    
                     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                         <a href="{{ url_for('index') }}" class="btn btn-secondary">
                             <i class="bi bi-x-circle"></i> Cancel
@@ -66,5 +171,21 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function toggleRecurringOptions() {
+        const checkbox = document.getElementById('is_recurring');
+        const options = document.getElementById('recurringOptions');
+        options.style.display = checkbox.checked ? 'block' : 'none';
+        
+        if (!checkbox.checked) {
+            document.getElementById('recurring_type').value = '';
+            document.getElementById('recurring_time').value = '';
+            document.getElementById('recurring_end_date').value = '';
+        }
+    }
+</script>
 {% endblock %}
 

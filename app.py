@@ -17,13 +17,14 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 app.config['DATABASE_PATH'] = os.getenv('DATABASE_PATH', 'database/tasks.db')
 
-# Initialize database model
-from models import TaskModel
+# Initialize database models
+from models import TaskModel, UserModel
 task_model = TaskModel(db_path=app.config['DATABASE_PATH'])
+user_model = UserModel(db_path=app.config['DATABASE_PATH'])
 
 # Register routes
 from routes import register_routes
-register_routes(app, task_model)
+register_routes(app, task_model, user_model)
 
 
 @app.errorhandler(404)

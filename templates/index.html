@@ -57,15 +57,32 @@
                     <div class="col-md-4">
                         <label for="sort" class="form-label">Sort By</label>
                         <select class="form-select" id="sort" name="sort" onchange="this.form.submit()">
+                            <option value="due_date" {% if current_sort == 'due_date' %}selected{% endif %}>Due Date</option>
+                            <option value="priority" {% if current_sort == 'priority' %}selected{% endif %}>Priority</option>
                             <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>Date Created</option>
                             <option value="updated_at" {% if current_sort == 'updated_at' %}selected{% endif %}>Last Updated</option>
                             <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Title</option>
                             <option value="status" {% if current_sort == 'status' %}selected{% endif %}>Status</option>
                         </select>
                     </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary w-100">
+                    <div class="col-md-4">
+                        <label for="priority_filter" class="form-label">Filter by Priority</label>
+                        <select class="form-select" id="priority_filter" name="priority" onchange="this.form.submit()">
+                            <option value="">All Priorities</option>
+                            <option value="high" {% if request.args.get('priority') == 'high' %}selected{% endif %}>🔴 High</option>
+                            <option value="medium" {% if request.args.get('priority') == 'medium' %}selected{% endif %}>🟡 Medium</option>
+                            <option value="low" {% if request.args.get('priority') == 'low' %}selected{% endif %}>🟢 Low</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12 d-flex align-items-end gap-2 mt-3">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-clockwise"></i> Reset Filters
+                        </a>
+                        <a href="{{ url_for('calendar_view') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-calendar3"></i> Calendar View
+                        </a>
+                        <a href="{{ url_for('add_task') }}?quick=today" class="btn btn-outline-success">
+                            <i class="bi bi-plus-circle"></i> Add Task for Today
                         </a>
                     </div>
                 </form>
@@ -81,7 +98,23 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <h5 class="card-title {% if task.status == 'complete' %}text-decoration-line-through text-muted{% endif %}">
+                                        {% if task.priority == 'high' %}
+                                            <span class="badge bg-danger me-1">🔴 High</span>
+                                        {% elif task.priority == 'medium' %}
+                                            <span class="badge bg-warning me-1">🟡 Medium</span>
+                                        {% elif task.priority == 'low' %}
+                                            <span class="badge bg-success me-1">🟢 Low</span>
+                                        {% endif %}
                                         {{ task.title }}
+                                        {% if task.is_shared %}
+                                            <i class="bi bi-share text-info" title="Shared task"></i>
+                                        {% endif %}
+                                        {% if task.recurring_type %}
+                                            <i class="bi bi-arrow-repeat text-primary" title="Recurring: {{ task.recurring_type }}"></i>
+                                        {% endif %}
+                                        {% if current_user and task.user_id and task.user_id != current_user.id %}
+                                            <span class="badge bg-info ms-1">Shared</span>
+                                        {% endif %}
                                     </h5>
                                     <span class="badge {% if task.status == 'complete' %}bg-success{% else %}bg-warning{% endif %}">
                                         {% if task.status == 'complete' %}
@@ -99,10 +132,30 @@
                                 {% endif %}
                                 
                                 <div class="text-muted small mb-3">
-                                    <i class="bi bi-calendar"></i> Created: {{ task.created_at[:10] }}
-                                    {% if task.updated_at != task.created_at %}
-                                        <br><i class="bi bi-pencil"></i> Updated: {{ task.updated_at[:10] }}
+                                    {% if task.due_date %}
+                                        <div>
+                                            <i class="bi bi-calendar-event"></i> 
+                                            <strong>Due:</strong> {{ task.due_date }}
+                                            {% if task.recurring_time %}
+                                                at {{ task.recurring_time }}
+                                            {% endif %}
+                                        </div>
                                     {% endif %}
+                                    {% if task.recurring_type %}
+                                        <div>
+                                            <i class="bi bi-arrow-repeat"></i> 
+                                            Repeats: <strong>{{ task.recurring_type|title }}</strong>
+                                            {% if task.recurring_end_date %}
+                                                until {{ task.recurring_end_date }}
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <i class="bi bi-calendar"></i> Created: {{ task.created_at[:10] }}
+                                        {% if task.updated_at != task.created_at %}
+                                            <br><i class="bi bi-pencil"></i> Updated: {{ task.updated_at[:10] }}
+                                        {% endif %}
+                                    </div>
                                 </div>
                                 
                                 <div class="btn-group w-100" role="group">
@@ -114,15 +167,21 @@
                                         </button>
                                     </form>
                                     
-                                    <a href="{{ url_for('edit_task', task_id=task.id) }}" class="btn btn-sm btn-primary">
-                                        <i class="bi bi-pencil"></i> Edit
-                                    </a>
-                                    
-                                    <form method="POST" action="{{ url_for('delete_task', task_id=task.id) }}" class="d-inline delete-form">
-                                        <button type="submit" class="btn btn-sm btn-danger">
-                                            <i class="bi bi-trash"></i> Delete
+                                    {% if current_user and task.user_id == current_user.id %}
+                                        <a href="{{ url_for('edit_task', task_id=task.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </a>
+                                        
+                                        <form method="POST" action="{{ url_for('delete_task', task_id=task.id) }}" class="d-inline delete-form">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <button class="btn btn-sm btn-secondary" disabled title="You can only edit your own tasks">
+                                            <i class="bi bi-lock"></i> View Only
                                         </button>
-                                    </form>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>

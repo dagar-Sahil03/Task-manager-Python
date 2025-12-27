@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Calendar - Task Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+    .calendar-day {
+        min-height: 120px;
+        border: 1px solid #dee2e6;
+        padding: 8px;
+        position: relative;
+    }
+    .calendar-day.other-month {
+        background-color: #f8f9fa;
+        color: #6c757d;
+    }
+    .calendar-day.today {
+        background-color: #e7f3ff;
+        border: 2px solid #0d6efd;
+    }
+    .calendar-day.has-tasks {
+        background-color: #fff3cd;
+    }
+    .task-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 2px;
+    }
+    .task-dot.high { background-color: #dc3545; }
+    .task-dot.medium { background-color: #ffc107; }
+    .task-dot.low { background-color: #28a745; }
+    .day-number {
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+    .task-list {
+        font-size: 0.75rem;
+        margin-top: 4px;
+    }
+    .task-item {
+        margin: 2px 0;
+        padding: 2px 4px;
+        border-radius: 3px;
+        background-color: rgba(255, 255, 255, 0.7);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="bi bi-calendar3"></i> Calendar View
+            </h1>
+            <div>
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-list"></i> List View
+                </a>
+                <a href="{{ url_for('add_task') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Add Task
+                </a>
+            </div>
+        </div>
+
+        <!-- Month Navigation -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('calendar_view', year=prev_year, month=prev_month) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-chevron-left"></i> Previous Month
+                    </a>
+                    <h3 class="mb-0">{{ month_name }} {{ year }}</h3>
+                    <a href="{{ url_for('calendar_view', year=next_year, month=next_month) }}" class="btn btn-outline-primary">
+                        Next Month <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar Grid -->
+        <div class="card">
+            <div class="card-body">
+                <!-- Day Headers -->
+                <div class="row g-0">
+                    {% for day_name in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                        <div class="col calendar-day text-center fw-bold bg-light" style="min-height: 40px; padding: 8px;">
+                            {{ day_name }}
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Calendar Days -->
+                <div class="row g-0">
+                    {% set start_date = first_day %}
+                    {% set start_weekday = start_date.weekday() %}
+                    {% set days_in_month = (last_day - first_day).days + 1 %}
+                    {% set total_cells = ((start_weekday + days_in_month + 6) // 7) * 7 %}
+                    
+                    {% for i in range(total_cells) %}
+                        {% set day_offset = i - start_weekday %}
+                        {% if day_offset < 0 %}
+                            {# Previous month days #}
+                            <div class="col calendar-day other-month">
+                                <div class="day-number">{{ (start_date + timedelta(days=day_offset)).day }}</div>
+                            </div>
+                        {% elif day_offset < days_in_month %}
+                            {# Current month days #}
+                            {% set current_date = (start_date + timedelta(days=day_offset)).isoformat() %}
+                            {% set today_date = today.isoformat() if today is defined else '' %}
+                            {% set is_today = current_date == today_date %}
+                            {% set day_tasks = tasks_by_date.get(current_date, []) %}
+                            <div class="col calendar-day {% if is_today %}today{% elif day_tasks %}has-tasks{% endif %}">
+                                <div class="day-number">
+                                    {{ (start_date + timedelta(days=day_offset)).day }}
+                                    {% if is_today %}
+                                        <span class="badge bg-primary">Today</span>
+                                    {% endif %}
+                                </div>
+                                <div class="task-list">
+                                    {% for task in day_tasks[:3] %}
+                                        <div class="task-item">
+                                            <span class="task-dot {{ task.priority or 'medium' }}"></span>
+                                            <a href="{{ url_for('edit_task', task_id=task.id) }}" class="text-decoration-none">
+                                                {{ task.title[:20] }}{% if task.title|length > 20 %}...{% endif %}
+                                            </a>
+                                            {% if task.recurring_type %}
+                                                <i class="bi bi-arrow-repeat text-primary" title="Recurring"></i>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                    {% if day_tasks|length > 3 %}
+                                        <div class="text-muted small">+{{ day_tasks|length - 3 }} more</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            {# Next month days #}
+                            {% set next_month_day = day_offset - days_in_month + 1 %}
+                            <div class="col calendar-day other-month">
+                                <div class="day-number">{{ next_month_day }}</div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5>Legend:</h5>
+                <div class="row">
+                    <div class="col-md-4">
+                        <span class="task-dot high"></span> High Priority
+                        <span class="task-dot medium"></span> Medium Priority
+                        <span class="task-dot low"></span> Low Priority
+                    </div>
+                    <div class="col-md-4">
+                        <i class="bi bi-arrow-repeat text-primary"></i> Recurring Task
+                    </div>
+                    <div class="col-md-4">
+                        <span class="badge bg-primary">Today</span> Current Date
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Add any calendar-specific JavaScript here if needed
+</script>
+{% endblock %}
+
