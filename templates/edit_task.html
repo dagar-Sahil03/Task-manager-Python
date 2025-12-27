@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Task - Task Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-pencil"></i> Edit Task
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit_task', task_id=task.id) }}" id="editTaskForm">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">
+                            Task Title <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="title" 
+                               name="title" 
+                               value="{{ task.title }}"
+                               required 
+                               maxlength="200"
+                               placeholder="Enter task title">
+                        <div class="form-text">Maximum 200 characters</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" 
+                                  id="description" 
+                                  name="description" 
+                                  rows="5"
+                                  maxlength="1000"
+                                  placeholder="Enter task description (optional)">{{ task.description or '' }}</textarea>
+                        <div class="form-text">Maximum 1000 characters</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Current Status</label>
+                        <div>
+                            <span class="badge {% if task.status == 'complete' %}bg-success{% else %}bg-warning{% endif %}">
+                                {% if task.status == 'complete' %}
+                                    <i class="bi bi-check-circle"></i> Complete
+                                {% else %}
+                                    <i class="bi bi-clock"></i> Incomplete
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="form-text">Use the toggle button on the homepage to change status</div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Update Task
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

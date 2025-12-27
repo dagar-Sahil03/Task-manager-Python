@@ -1,0 +1,174 @@
+/* Custom styles for Task Tracker */
+
+:root {
+    --primary-color: #0d6efd;
+    --success-color: #198754;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --secondary-color: #6c757d;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Card hover effects */
+.card {
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Task card styling */
+.card.border-success {
+    border-width: 2px !important;
+}
+
+.card.border-warning {
+    border-width: 2px !important;
+}
+
+/* Button group spacing */
+.btn-group {
+    gap: 0.25rem;
+}
+
+.btn-group .btn {
+    flex: 1;
+}
+
+/* Form validation styling */
+.form-control:invalid {
+    border-color: var(--danger-color);
+}
+
+.form-control:valid {
+    border-color: var(--success-color);
+}
+
+/* Flash message animations */
+.alert {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Statistics cards */
+.card.text-center .card-body h2 {
+    margin: 0;
+    font-weight: bold;
+}
+
+/* Empty state styling */
+.card-body.text-center {
+    padding: 3rem 1rem;
+}
+
+.card-body.text-center .display-1 {
+    opacity: 0.3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+        margin-bottom: 0.25rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .d-flex.justify-content-between .btn {
+        width: 100%;
+    }
+}
+
+/* Loading state */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Task description truncation */
+.card-text {
+    line-height: 1.5;
+    color: #6c757d;
+}
+
+/* Badge styling */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
+/* Footer styling */
+footer {
+    margin-top: auto;
+}
+
+/* Custom scrollbar for textareas */
+textarea.form-control {
+    resize: vertical;
+}
+
+/* Focus states */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Navbar brand styling */
+.navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+/* Icon spacing */
+.bi {
+    margin-right: 0.25rem;
+}
+
+.btn .bi {
+    margin-right: 0.25rem;
+}
+
+/* Filter card styling */
+.card.mb-4 {
+    background-color: #f8f9fa;
+}
+
+/* Task card body padding */
+.card-body {
+    padding: 1.25rem;
+}
+
+/* Text decoration for completed tasks */
+.text-decoration-line-through {
+    text-decoration: line-through !important;
+}
+
