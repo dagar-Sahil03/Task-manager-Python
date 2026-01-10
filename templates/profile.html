@@ -8,11 +8,7 @@
     <div class="card mb-3">
       <div class="card-body d-flex gap-3">
         <div>
-          {% if user.avatar_url %}
-            <img src="{{ user.avatar_url }}" alt="avatar" class="rounded-circle" width="96" height="96">
-          {% else %}
-            <i class="bi bi-person-circle display-3 text-muted"></i>
-          {% endif %}
+          <i class="bi bi-person-circle display-3 text-muted"></i>
         </div>
         <div class="flex-fill">
           <h3>{{ user.full_name or user.username }}</h3>

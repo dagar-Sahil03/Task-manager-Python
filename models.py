@@ -572,12 +572,8 @@ class UserModel:
                 password_hash TEXT NOT NULL,
                 is_admin INTEGER NOT NULL DEFAULT 0,
                 full_name TEXT,
-                avatar_url TEXT,
                 occupation TEXT,
-                timezone TEXT,
-                preferred_hours TEXT,
                 location TEXT,
-                theme_pref TEXT,
                 birthday DATE,
                 bio TEXT,
                 interests TEXT,
@@ -590,12 +586,8 @@ class UserModel:
         # Ensure existing databases get new profile columns (safe ALTERs)
         profile_columns = {
             'full_name': 'TEXT',
-            'avatar_url': 'TEXT',
             'occupation': 'TEXT',
-            'timezone': 'TEXT',
-            'preferred_hours': 'TEXT',
             'location': 'TEXT',
-            'theme_pref': 'TEXT',
             'birthday': 'DATE',
             'bio': 'TEXT',
             'interests': 'TEXT',
@@ -637,8 +629,7 @@ class UserModel:
 
         Accepts keyword args for profile columns (see _init_database). Returns True if updated.
         """
-        allowed = ['full_name', 'avatar_url', 'occupation', 'timezone', 'preferred_hours',
-                   'location', 'theme_pref', 'birthday', 'bio', 'interests', 'skills', 'strengths_weaknesses']
+        allowed = ['full_name', 'occupation', 'location', 'birthday', 'bio', 'interests', 'skills', 'strengths_weaknesses']
         updates = {k: v for k, v in fields.items() if k in allowed}
         if not updates:
             return False

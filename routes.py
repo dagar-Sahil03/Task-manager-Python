@@ -113,12 +113,8 @@ def register_routes(app, task_model, user_model):
             try:
                 # Basic info
                 full_name = request.form.get('full_name', '').strip() or None
-                avatar_url = request.form.get('avatar_url', '').strip() or None
                 occupation = request.form.get('occupation', '').strip() or None
-                timezone = request.form.get('timezone', '').strip() or None
-                preferred_hours = request.form.get('preferred_hours', '').strip() or None
                 location = request.form.get('location', '').strip() or None
-                theme_pref = request.form.get('theme_pref', '').strip() or None
                 birthday = request.form.get('birthday', '').strip() or None
 
                 # Personal details
@@ -130,12 +126,8 @@ def register_routes(app, task_model, user_model):
                 updated = user_model.update_user_profile(
                     current_user['id'],
                     full_name=full_name,
-                    avatar_url=avatar_url,
                     occupation=occupation,
-                    timezone=timezone,
-                    preferred_hours=preferred_hours,
                     location=location,
-                    theme_pref=theme_pref,
                     birthday=birthday,
                     bio=bio,
                     interests=interests,

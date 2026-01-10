@@ -13,34 +13,17 @@
             <label class="form-label">Full name</label>
             <input name="full_name" class="form-control" value="{{ user.full_name or '' }}">
           </div>
-          <div class="mb-3">
-            <label class="form-label">Avatar URL</label>
-            <input name="avatar_url" class="form-control" value="{{ user.avatar_url or '' }}">
-          </div>
+          
           <div class="mb-3">
             <label class="form-label">Occupation / Role</label>
             <input name="occupation" class="form-control" value="{{ user.occupation or '' }}">
           </div>
-          <div class="mb-3">
-            <label class="form-label">Timezone</label>
-            <input name="timezone" class="form-control" value="{{ user.timezone or '' }}">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Preferred working hours (e.g. 09:00-17:00)</label>
-            <input name="preferred_hours" class="form-control" value="{{ user.preferred_hours or '' }}">
-          </div>
+          
           <div class="mb-3">
             <label class="form-label">Location</label>
             <input name="location" class="form-control" value="{{ user.location or '' }}">
           </div>
-          <div class="mb-3">
-            <label class="form-label">Theme preference</label>
-            <select name="theme_pref" class="form-select">
-              <option value="" {% if not user.theme_pref %}selected{% endif %}>System default</option>
-              <option value="light" {% if user.theme_pref == 'light' %}selected{% endif %}>Light</option>
-              <option value="dark" {% if user.theme_pref == 'dark' %}selected{% endif %}>Dark</option>
-            </select>
-          </div>
+          
           <div class="mb-3">
             <label class="form-label">Birthday</label>
             <input type="date" name="birthday" class="form-control" value="{{ user.birthday or '' }}">
