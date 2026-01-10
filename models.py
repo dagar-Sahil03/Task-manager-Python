@@ -619,6 +619,29 @@ class UserModel:
             )
         """)
         
+        # Create habits tables: habits and habit_marks (per-day)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS habits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS habit_marks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                habit_id INTEGER NOT NULL,
+                mark_date TEXT NOT NULL, -- YYYY-MM-DD
+                done INTEGER NOT NULL DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (habit_id) REFERENCES habits(id)
+            )
+        """)
+
         conn.commit()
         conn.close()
 
@@ -706,6 +729,69 @@ class UserModel:
         conn.commit()
         conn.close()
         return success
+
+    # ---------- Habits methods ----------
+    def create_habit(self, user_id: int, name: str, description: str = '') -> int:
+        if not name or not name.strip():
+            raise ValueError('Habit name is required')
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO habits (user_id, name, description)
+            VALUES (?, ?, ?)
+        """, (user_id, name.strip(), description.strip()))
+        hid = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return hid
+
+    def get_habits(self, user_id: int) -> List[Dict]:
+        """Return list of habits for a user with today's mark status."""
+        today = datetime.date.today().isoformat()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM habits WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        habits = [dict(r) for r in rows]
+        # Attach today's mark
+        for h in habits:
+            cursor.execute("SELECT done FROM habit_marks WHERE habit_id = ? AND mark_date = ?", (h['id'], today))
+            row = cursor.fetchone()
+            h['done_today'] = bool(row['done']) if row else False
+        conn.close()
+        return habits
+
+    def mark_habit(self, habit_id: int, mark_date: Optional[str] = None, done: bool = True) -> bool:
+        """Mark or unmark a habit for a given date (defaults to today)."""
+        if mark_date is None:
+            mark_date = datetime.date.today().isoformat()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        # Check if existing
+        cursor.execute("SELECT id FROM habit_marks WHERE habit_id = ? AND mark_date = ?", (habit_id, mark_date))
+        row = cursor.fetchone()
+        if row:
+            if done:
+                cursor.execute("UPDATE habit_marks SET done = 1 WHERE id = ?", (row['id'],))
+            else:
+                cursor.execute("DELETE FROM habit_marks WHERE id = ?", (row['id'],))
+        else:
+            if done:
+                cursor.execute("INSERT INTO habit_marks (habit_id, mark_date, done) VALUES (?, ?, 1)", (habit_id, mark_date))
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return success
+
+    def get_habit_history(self, habit_id: int, days: int = 30) -> List[Dict]:
+        """Return last `days` marks for the habit as list of dates with done flag."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        since = (datetime.date.today() - datetime.timedelta(days=days-1)).isoformat()
+        cursor.execute("SELECT mark_date, done FROM habit_marks WHERE habit_id = ? AND mark_date >= ? ORDER BY mark_date DESC", (habit_id, since))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
 
     def delete_goal(self, goal_id: int, user_id: int) -> bool:
         # Ensure ownership

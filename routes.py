@@ -291,6 +291,50 @@ def register_routes(app, task_model, user_model):
                              today=today,
                              timedelta=timedelta,
                              current_user=current_user)
+
+    @app.route('/habits', methods=['GET', 'POST'])
+    @login_required
+    def habits_view():
+        """List and add habits for the current user."""
+        current_user = get_current_user(user_model)
+        if request.method == 'POST':
+            try:
+                name = request.form.get('name', '').strip()
+                description = request.form.get('description', '').strip() or ''
+                if not name:
+                    flash('Habit name is required.', 'error')
+                    return redirect(url_for('habits_view'))
+
+                user_model.create_habit(current_user['id'], name, description)
+                flash('Habit added.', 'success')
+            except Exception as e:
+                flash(f'Error adding habit: {e}', 'error')
+            return redirect(url_for('habits_view'))
+
+        habits = []
+        try:
+            habits = user_model.get_habits(current_user['id']) if current_user else []
+        except Exception:
+            habits = []
+
+        return render_template('habits.html', habits=habits, user=current_user, current_user=current_user)
+
+    @app.route('/habits/<int:habit_id>/mark', methods=['POST'])
+    @login_required
+    def mark_habit(habit_id):
+        """Mark or unmark today's completion for a habit."""
+        current_user = get_current_user(user_model)
+        mark_val = request.form.get('mark', '1')
+        done = True if str(mark_val) == '1' else False
+        try:
+            success = user_model.mark_habit(habit_id, done=done)
+            if success:
+                flash('Habit updated.', 'success')
+            else:
+                flash('Could not update habit.', 'error')
+        except Exception as e:
+            flash(f'Error updating habit: {e}', 'error')
+        return redirect(url_for('habits_view'))
     
     @app.route('/')
     @login_required

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Habits - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8 offset-md-2">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h4>Your Habits</h4>
+        <form method="POST" action="{{ url_for('habits_view') }}" class="mb-3">
+          <div class="input-group">
+            <input name="name" class="form-control" placeholder="New habit (e.g. Read 30 minutes)">
+            <button class="btn btn-primary">Add</button>
+          </div>
+        </form>
+
+        {% if habits %}
+          <ul class="list-group">
+            {% for h in habits %}
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>{{ h.name }}</strong>
+                  {% if h.description %}
+                    <div class="small text-muted">{{ h.description }}</div>
+                  {% endif %}
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                  <form method="POST" action="{{ url_for('mark_habit', habit_id=h.id) }}">
+                    {% if h.done_today %}
+                      <input type="hidden" name="mark" value="0">
+                      <button class="btn btn-sm btn-success">Done Today</button>
+                    {% else %}
+                      <input type="hidden" name="mark" value="1">
+                      <button class="btn btn-sm btn-outline-secondary">Mark Done</button>
+                    {% endif %}
+                  </form>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">No habits yet — add one to get started.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
