@@ -54,6 +54,16 @@
                                         <small class="text-muted">Logged in as {{ session.username }}</small>
                                     </span>
                                 </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('profile_view') }}">
+                                        <i class="bi bi-person"></i> View Profile
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('edit_profile') }}">
+                                        <i class="bi bi-pencil-square"></i> Edit Profile
+                                    </a>
+                                </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form method="POST" action="{{ url_for('logout') }}" class="d-inline">

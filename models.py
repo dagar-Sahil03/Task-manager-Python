@@ -564,18 +564,170 @@ class UserModel:
         conn = self._get_connection()
         cursor = conn.cursor()
         
+        # Create users table with extended profile fields
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 is_admin INTEGER NOT NULL DEFAULT 0,
+                full_name TEXT,
+                avatar_url TEXT,
+                occupation TEXT,
+                timezone TEXT,
+                preferred_hours TEXT,
+                location TEXT,
+                theme_pref TEXT,
+                birthday DATE,
+                bio TEXT,
+                interests TEXT,
+                skills TEXT,
+                strengths_weaknesses TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Ensure existing databases get new profile columns (safe ALTERs)
+        profile_columns = {
+            'full_name': 'TEXT',
+            'avatar_url': 'TEXT',
+            'occupation': 'TEXT',
+            'timezone': 'TEXT',
+            'preferred_hours': 'TEXT',
+            'location': 'TEXT',
+            'theme_pref': 'TEXT',
+            'birthday': 'DATE',
+            'bio': 'TEXT',
+            'interests': 'TEXT',
+            'skills': 'TEXT',
+            'strengths_weaknesses': 'TEXT'
+        }
+
+        for col, coltype in profile_columns.items():
+            try:
+                cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {coltype}")
+            except sqlite3.OperationalError:
+                # Column probably exists
+                pass
+
+        # Create goals table to store user goals (short-term, long-term, etc.)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS goals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                category TEXT NOT NULL DEFAULT 'short_term',
+                custom_category TEXT,
+                target_date DATE,
+                is_completed INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
         
         conn.commit()
         conn.close()
+
+    # ---------- User profile methods ----------
+    def update_user_profile(self, user_id: int, **fields) -> bool:
+        """
+        Update user profile fields.
+
+        Accepts keyword args for profile columns (see _init_database). Returns True if updated.
+        """
+        allowed = ['full_name', 'avatar_url', 'occupation', 'timezone', 'preferred_hours',
+                   'location', 'theme_pref', 'birthday', 'bio', 'interests', 'skills', 'strengths_weaknesses']
+        updates = {k: v for k, v in fields.items() if k in allowed}
+        if not updates:
+            return False
+
+        set_clause = ', '.join([f"{k} = ?" for k in updates.keys()])
+        params = list(updates.values())
+        params.append(user_id)
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE users SET {set_clause} WHERE id = ?", params)
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return success
+
+    # ---------- Goals methods ----------
+    def create_goal(self, user_id: int, title: str, description: str = '', category: str = 'short_term', custom_category: str = None, target_date: Optional[str] = None) -> int:
+        if not title or not title.strip():
+            raise ValueError('Goal title is required')
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO goals (user_id, title, description, category, custom_category, target_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, title.strip(), description.strip(), category, custom_category, target_date))
+        goal_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return goal_id
+
+    def get_goals(self, user_id: int) -> List[Dict]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        goals = [dict(r) for r in rows]
+        for g in goals:
+            g['is_completed'] = bool(g.get('is_completed', 0))
+        return goals
+
+    def get_goal_by_id(self, goal_id: int, user_id: Optional[int] = None) -> Optional[Dict]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM goals WHERE id = ?", (goal_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        goal = dict(row)
+        if user_id is not None and goal.get('user_id') != user_id:
+            return None
+        goal['is_completed'] = bool(goal.get('is_completed', 0))
+        return goal
+
+    def update_goal(self, goal_id: int, user_id: int, **fields) -> bool:
+        allowed = ['title', 'description', 'category', 'custom_category', 'target_date', 'is_completed']
+        updates = {k: v for k, v in fields.items() if k in allowed}
+        if not updates:
+            return False
+        # Ensure ownership
+        goal = self.get_goal_by_id(goal_id)
+        if not goal or goal.get('user_id') != user_id:
+            return False
+
+        set_clause = ', '.join([f"{k} = ?" for k in updates.keys()])
+        params = list(updates.values())
+        params.append(goal_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(f"UPDATE goals SET {set_clause}, updated_at = CURRENT_TIMESTAMP WHERE id = ?", params)
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return success
+
+    def delete_goal(self, goal_id: int, user_id: int) -> bool:
+        # Ensure ownership
+        goal = self.get_goal_by_id(goal_id)
+        if not goal or goal.get('user_id') != user_id:
+            return False
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return success
     
     def create_user(self, username: str, password: str, is_admin: bool = False) -> int:
         """

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Add Goal{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-8 offset-md-2">
+    <div class="card">
+      <div class="card-body">
+        <h4>Add Goal</h4>
+        <form method="POST" action="{{ url_for('add_goal') }}">
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input name="title" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select">
+              <option value="short_term">Short-term</option>
+              <option value="long_term">Long-term</option>
+              <option value="career">Career</option>
+              <option value="personal_development">Personal development</option>
+              <option value="health">Health & fitness</option>
+              <option value="financial">Financial</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Custom category (if any)</label>
+            <input name="custom_category" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Target date</label>
+            <input type="date" name="target_date" class="form-control">
+          </div>
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('profile_view') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button class="btn btn-primary">Add Goal</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

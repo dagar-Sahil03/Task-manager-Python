@@ -85,6 +85,142 @@ def register_routes(app, task_model, user_model):
         session.clear()
         flash(f'Goodbye, {username}! You have been logged out.', 'success')
         return redirect(url_for('login'))
+
+    # ---------- User profile & goals routes ----------
+    @app.route('/profile')
+    @login_required
+    def profile_view():
+        current_user = get_current_user(user_model)
+        if not current_user:
+            flash('User not found.', 'error')
+            return redirect(url_for('index'))
+        # Load goals for the user
+        try:
+            goals = user_model.get_goals(current_user['id'])
+        except Exception:
+            goals = []
+        return render_template('profile.html', user=current_user, goals=goals, current_user=current_user)
+
+    @app.route('/profile/edit', methods=['GET', 'POST'])
+    @login_required
+    def edit_profile():
+        current_user = get_current_user(user_model)
+        if not current_user:
+            flash('User not found.', 'error')
+            return redirect(url_for('index'))
+
+        if request.method == 'POST':
+            try:
+                # Basic info
+                full_name = request.form.get('full_name', '').strip() or None
+                avatar_url = request.form.get('avatar_url', '').strip() or None
+                occupation = request.form.get('occupation', '').strip() or None
+                timezone = request.form.get('timezone', '').strip() or None
+                preferred_hours = request.form.get('preferred_hours', '').strip() or None
+                location = request.form.get('location', '').strip() or None
+                theme_pref = request.form.get('theme_pref', '').strip() or None
+                birthday = request.form.get('birthday', '').strip() or None
+
+                # Personal details
+                bio = request.form.get('bio', '').strip() or None
+                interests = request.form.get('interests', '').strip() or None
+                skills = request.form.get('skills', '').strip() or None
+                strengths_weaknesses = request.form.get('strengths_weaknesses', '').strip() or None
+
+                updated = user_model.update_user_profile(
+                    current_user['id'],
+                    full_name=full_name,
+                    avatar_url=avatar_url,
+                    occupation=occupation,
+                    timezone=timezone,
+                    preferred_hours=preferred_hours,
+                    location=location,
+                    theme_pref=theme_pref,
+                    birthday=birthday,
+                    bio=bio,
+                    interests=interests,
+                    skills=skills,
+                    strengths_weaknesses=strengths_weaknesses
+                )
+
+                if updated:
+                    flash('Profile updated successfully.', 'success')
+                else:
+                    flash('No changes made to profile.', 'info')
+
+                return redirect(url_for('profile_view'))
+            except Exception as e:
+                flash(f'Error updating profile: {e}', 'error')
+
+        return render_template('edit_profile.html', user=current_user, current_user=current_user)
+
+    # Goals: add, edit, delete
+    @app.route('/goals/add', methods=['GET', 'POST'])
+    @login_required
+    def add_goal():
+        current_user = get_current_user(user_model)
+        if request.method == 'POST':
+            try:
+                title = request.form.get('title', '').strip()
+                description = request.form.get('description', '').strip() or ''
+                category = request.form.get('category', 'short_term')
+                custom_category = request.form.get('custom_category', '').strip() or None
+                target_date = request.form.get('target_date', '').strip() or None
+
+                if not title:
+                    flash('Goal title is required.', 'error')
+                    return render_template('add_goal.html', current_user=current_user)
+
+                goal_id = user_model.create_goal(current_user['id'], title, description, category, custom_category, target_date)
+                flash('Goal added.', 'success')
+                return redirect(url_for('profile_view'))
+            except Exception as e:
+                flash(f'Error adding goal: {e}', 'error')
+        return render_template('add_goal.html', current_user=current_user)
+
+    @app.route('/goals/<int:goal_id>/edit', methods=['GET', 'POST'])
+    @login_required
+    def edit_goal(goal_id):
+        current_user = get_current_user(user_model)
+        goal = user_model.get_goal_by_id(goal_id, user_id=current_user['id'])
+        if not goal:
+            flash('Goal not found or access denied.', 'error')
+            return redirect(url_for('profile_view'))
+
+        if request.method == 'POST':
+            try:
+                title = request.form.get('title', '').strip()
+                description = request.form.get('description', '').strip() or ''
+                category = request.form.get('category', 'short_term')
+                custom_category = request.form.get('custom_category', '').strip() or None
+                target_date = request.form.get('target_date', '').strip() or None
+                is_completed = 1 if request.form.get('is_completed') == 'on' else 0
+
+                if not title:
+                    flash('Goal title is required.', 'error')
+                    return render_template('edit_goal.html', goal=goal, current_user=current_user)
+
+                updated = user_model.update_goal(goal_id, current_user['id'], title=title, description=description, category=category, custom_category=custom_category, target_date=target_date, is_completed=is_completed)
+                if updated:
+                    flash('Goal updated.', 'success')
+                else:
+                    flash('No changes made to goal.', 'info')
+                return redirect(url_for('profile_view'))
+            except Exception as e:
+                flash(f'Error updating goal: {e}', 'error')
+
+        return render_template('edit_goal.html', goal=goal, current_user=current_user)
+
+    @app.route('/goals/<int:goal_id>/delete', methods=['POST'])
+    @login_required
+    def delete_goal(goal_id):
+        current_user = get_current_user(user_model)
+        success = user_model.delete_goal(goal_id, current_user['id'])
+        if success:
+            flash('Goal deleted.', 'success')
+        else:
+            flash('Could not delete goal.', 'error')
+        return redirect(url_for('profile_view'))
     
     @app.route('/calendar')
     @login_required
