@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Habits - {{ user.username }}{% endblock %}
+{% block title %}Habits - Habits{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -34,6 +34,9 @@
                       <input type="hidden" name="mark" value="1">
                       <button class="btn btn-sm btn-outline-secondary">Mark Done</button>
                     {% endif %}
+                  </form>
+                  <form method="POST" action="{{ url_for('delete_habit', habit_id=h.id) }}" onsubmit="return confirm('Delete this habit and all its marks?');">
+                    <button class="btn btn-sm btn-danger">Delete</button>
                   </form>
                 </div>
               </li>

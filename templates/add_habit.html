@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Add Habit{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-6 offset-md-3">
+    <div class="card">
+      <div class="card-body">
+        <h4>Add Habit</h4>
+        <form method="POST" action="{{ url_for('habits_view') }}">
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Frequency (optional)</label>
+            <input name="frequency" class="form-control" placeholder="e.g. daily, weekdays, weekly">
+          </div>
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('habit_tracker') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button class="btn btn-primary">Add</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -618,6 +618,32 @@ class UserModel:
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
+
+        # Create habits and habit_entries tables
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS habits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                frequency TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS habit_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                habit_id INTEGER NOT NULL,
+                entry_date DATE NOT NULL,
+                done INTEGER NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (habit_id) REFERENCES habits(id)
+            )
+        """)
         
         # Create habits tables: habits and habit_marks (per-day)
         cursor.execute("""
@@ -801,6 +827,84 @@ class UserModel:
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM goals WHERE id = ?", (goal_id,))
+        success = cursor.rowcount > 0
+        conn.commit()
+        conn.close()
+        return success
+
+    # ---------- Habits methods ----------
+    def create_habit(self, user_id: int, title: str, description: str = '', frequency: str = None) -> int:
+        if not title or not title.strip():
+            raise ValueError('Habit title is required')
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO habits (user_id, title, description, frequency)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, title.strip(), description.strip(), frequency))
+        hid = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return hid
+
+    def get_habits(self, user_id: int) -> List[Dict]:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM habits WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+    def get_habit_entries_for_range(self, habit_ids: List[int], start_date: str, end_date: str) -> Dict[int, Dict[str, Dict]]:
+        # Returns mapping: {habit_id: {date_str: entry_dict}}
+        if not habit_ids:
+            return {}
+        placeholders = ','.join('?' for _ in habit_ids)
+        params = habit_ids + [start_date, end_date]
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        query = f"SELECT * FROM habit_entries WHERE habit_id IN ({placeholders}) AND entry_date >= ? AND entry_date <= ?"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        result = {}
+        for r in rows:
+            row = dict(r)
+            hid = row['habit_id']
+            d = row['entry_date']
+            result.setdefault(hid, {})[d] = row
+        return result
+
+    def toggle_habit_entry(self, habit_id: int, entry_date: str) -> bool:
+        """Toggle or create a habit entry for a date. Returns new done state (True/False)."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM habit_entries WHERE habit_id = ? AND entry_date = ?", (habit_id, entry_date))
+        row = cursor.fetchone()
+        if row:
+            # toggle
+            current = bool(row['done'])
+            new = 0 if current else 1
+            cursor.execute("UPDATE habit_entries SET done = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (new, row['id']))
+            done_state = bool(new)
+        else:
+            cursor.execute("INSERT INTO habit_entries (habit_id, entry_date, done) VALUES (?, ?, 1)", (habit_id, entry_date))
+            done_state = True
+        conn.commit()
+        conn.close()
+        return done_state
+
+    def delete_habit(self, habit_id: int, user_id: int) -> bool:
+        # Ensure ownership
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id FROM habits WHERE id = ?", (habit_id,))
+        row = cursor.fetchone()
+        if not row or row['user_id'] != user_id:
+            conn.close()
+            return False
+        cursor.execute("DELETE FROM habit_entries WHERE habit_id = ?", (habit_id,))
+        cursor.execute("DELETE FROM habits WHERE id = ?", (habit_id,))
         success = cursor.rowcount > 0
         conn.commit()
         conn.close()

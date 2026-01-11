@@ -335,6 +335,50 @@ def register_routes(app, task_model, user_model):
         except Exception as e:
             flash(f'Error updating habit: {e}', 'error')
         return redirect(url_for('habits_view'))
+
+    @app.route('/habits/<int:habit_id>/delete', methods=['POST'])
+    @login_required
+    def delete_habit(habit_id):
+        """Delete a habit and its entries."""
+        current_user = get_current_user(user_model)
+        try:
+            success = user_model.delete_habit(habit_id, current_user['id'])
+            if success:
+                flash('Habit deleted.', 'success')
+            else:
+                flash('Could not delete habit (not found or permission denied).', 'error')
+        except Exception as e:
+            flash(f'Error deleting habit: {e}', 'error')
+        return redirect(url_for('habits_view'))
+
+    @app.route('/habits/<int:habit_id>/toggle', methods=['POST'])
+    @login_required
+    def toggle_habit(habit_id):
+        """Toggle a habit entry for an arbitrary date (expects form field 'date' in YYYY-MM-DD)."""
+        current_user = get_current_user(user_model)
+        entry_date = request.form.get('date')
+        if not entry_date:
+            flash('Date is required to toggle habit.', 'error')
+            return redirect(url_for('index'))
+        # Only allow toggling for today's date
+        from datetime import date as _date
+        today_iso = _date.today().isoformat()
+        if entry_date != today_iso:
+            # If AJAX return JSON error, otherwise redirect silently
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': 'Only today can be updated.'}), 400
+            return redirect(url_for('index'))
+        try:
+            new_state = user_model.toggle_habit_entry(habit_id, entry_date)
+            # If AJAX request return JSON
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': True, 'done': bool(new_state)})
+            flash('Habit updated.', 'success')
+        except Exception as e:
+            if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'error': str(e)}), 500
+            flash(f'Error updating habit: {e}', 'error')
+        return redirect(url_for('index'))
     
     @app.route('/')
     @login_required
@@ -354,13 +398,44 @@ def register_routes(app, task_model, user_model):
             
             # Get task statistics
             stats = task_model.get_task_count(user_id=user_id)
-            
+
+            # Prepare habit tracker data for current month
+            from datetime import date
+            import calendar
+
+            try:
+                year = int(request.args.get('year', date.today().year))
+                month = int(request.args.get('month', date.today().month))
+            except (ValueError, TypeError):
+                year = date.today().year
+                month = date.today().month
+
+            num_days = calendar.monthrange(year, month)[1]
+            # list of ISO date strings for the month
+            month_days = [date(year, month, d).isoformat() for d in range(1, num_days + 1)]
+            today_iso = date.today().isoformat()
+
+            habits = user_model.get_habits(user_id) if current_user else []
+            habit_ids = [h['id'] for h in habits]
+            entries = user_model.get_habit_entries_for_range(habit_ids, month_days[0], month_days[-1]) if habit_ids else {}
+
+            from datetime import datetime as _dt
+
+            current_datetime = _dt.now().strftime('%Y-%m-%d %H:%M:%S')
+
             return render_template('index.html', 
                                  tasks=tasks, 
                                  stats=stats,
                                  current_filter=status_filter,
                                  current_sort=sort_by,
-                                 current_user=current_user)
+                                 current_user=current_user,
+                                 habits=habits,
+                                 month_days=month_days,
+                                 month=month,
+                                 year=year,
+                                 entries=entries,
+                                 current_datetime=current_datetime,
+                                 today_iso=today_iso)
         except Exception as e:
             flash(f'Error loading tasks: {str(e)}', 'error')
             return render_template('index.html', tasks=[], stats={'total': 0, 'complete': 0, 'incomplete': 0}, current_user=get_current_user(user_model))

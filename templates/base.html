@@ -126,6 +126,29 @@
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
+    <script>
+    // Auto-dismiss flash alerts after 30 seconds (30000 ms)
+    document.addEventListener('DOMContentLoaded', function(){
+        try{
+            var alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(a){
+                setTimeout(function(){
+                    // Use Bootstrap's alert dispose if available
+                    try{
+                        var bsAlert = bootstrap.Alert.getOrCreateInstance(a);
+                        bsAlert.close();
+                    }catch(e){
+                        a.classList.remove('show');
+                        a.style.display = 'none';
+                    }
+                }, 30000);
+            });
+        }catch(e){
+            console.error('Auto-dismiss alerts error', e);
+        }
+    });
+    </script>
+
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

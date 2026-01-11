@@ -197,7 +197,124 @@
                 </div>
             </div>
         {% endif %}
+        
+        <!-- Habit Tracker Monthly Grid -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h3 class="h4 mb-0"><i class="bi bi-grid-3x3-gap"></i> Habit Tracker - {{ month }}/{{ year }}</h3>
+                        <div class="small text-muted">Current: <span id="currentDateTime" data-ts="{{ current_datetime }}" class="fw-semibold"></span></div>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('habits_view') }}" class="btn btn-sm btn-outline-secondary">Manage Habits</a>
+                    </div>
+                </div>
+
+                {% if habits %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered habit-grid" style="min-width:1200px; table-layout:fixed;">
+                            <thead>
+                                <tr>
+                                    <th style="width:250px;">Habit</th>
+                                    {% for d in month_days %}
+                                        <th class="text-center p-1 small" {% if d == today_iso %}style="background:#f0f8ff; border:2px solid #0d6efd;"{% endif %}>{{ loop.index }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in habits %}
+                                    <tr>
+                                        <td class="align-middle text-truncate" title="{{ h.get('name') or h.get('title') }}">{{ h.get('name') or h.get('title') }}</td>
+                                        {% for day in month_days %}
+                                            {% set entry = entries.get(h.id, {}).get(day) if entries else None %}
+                                            <td class="text-center p-1 align-middle" {% if day == today_iso %}style="background:#fff8e6;"{% endif %}>
+                                                {# Editable only for today; past days show check or red cross; future days blank #}
+                                                {% if day == today_iso %}
+                                                    <form method="POST" action="{{ url_for('toggle_habit', habit_id=h.id) }}">
+                                                        <input type="hidden" name="date" value="{{ day }}">
+                                                        <button type="submit" class="btn btn-sm p-0 d-flex justify-content-center align-items-center" style="width:24px; height:24px; border-radius:2px; border:1px solid #ddd; {% if entry and entry.get('done') %}background:#0d6efd; color:#fff; border-color:#0d6efd;{% else %}background:transparent; color:inherit;{% endif %}" title="{% if entry and entry.get('done') %}Marked{% else %}Mark done{% endif %}">
+                                                            {% if entry and entry.get('done') %}
+                                                                <i class="bi bi-check-lg" aria-hidden="true"></i>
+                                                            {% endif %}
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    {% if entry and entry.get('done') %}
+                                                        <span class="text-success"><i class="bi bi-check-lg"></i></span>
+                                                    {% elif day < today_iso %}
+                                                        <span class="text-danger"><i class="bi bi-x-lg"></i></span>
+                                                    {% else %}
+                                                        &nbsp;
+                                                    {% endif %}
+                                                {% endif %}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No habits yet. Add habits from the <a href="{{ url_for('habits_view') }}">Habits</a> page.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_head %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    // Live date/time display initialized from server time
+    var dtEl = document.getElementById('currentDateTime');
+    if(dtEl && dtEl.dataset && dtEl.dataset.ts){
+        // Parse server timestamp 'YYYY-MM-DD HH:MM:SS' into Date
+        var s = dtEl.dataset.ts.replace(' ', 'T');
+        var t = new Date(s);
+        function pad(n){ return n < 10 ? '0' + n : n; }
+        function updateTime(){
+            var formatted = t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()) + ' ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds());
+            dtEl.textContent = formatted;
+            t.setSeconds(t.getSeconds() + 1);
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+    }
+
+    // AJAX toggle for habit day cells: intercept forms that post to '/habits/<id>/toggle'
+    var forms = document.querySelectorAll('form[action$="/toggle"]');
+    forms.forEach(function(form){
+        form.addEventListener('submit', function(e){
+            e.preventDefault();
+            var btn = form.querySelector('button[type="submit"]');
+            var data = new FormData(form);
+            fetch(form.action, { method: 'POST', body: data, headers: {'X-Requested-With':'XMLHttpRequest'} })
+                .then(function(res){ return res.json(); })
+                .then(function(json){
+                    if(json && json.success){
+                        var done = !!json.done;
+                        if(done){
+                            btn.style.background = '#0d6efd';
+                            btn.style.color = '#fff';
+                            btn.style.borderColor = '#0d6efd';
+                            btn.innerHTML = '<i class="bi bi-check-lg" aria-hidden="true"></i>';
+                        } else {
+                            btn.style.background = 'transparent';
+                            btn.style.color = '';
+                            btn.style.borderColor = '#ddd';
+                            btn.innerHTML = '';
+                        }
+                    } else {
+                        console.error('Toggle failed', json);
+                    }
+                }).catch(function(err){
+                    console.error('Toggle error', err);
+                });
+        });
+    });
+});
+</script>
 {% endblock %}
 
